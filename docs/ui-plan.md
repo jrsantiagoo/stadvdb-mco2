@@ -30,6 +30,7 @@ Cost: the split carries no business meaning. A range split such as
 |---|---|
 | Read one film | this node if it holds the row → central → fragment |
 | List / search | central; if it is down, merge Node 2 + Node 3 |
+| Reports | all three nodes in parallel (for the fragment check); breakdowns from central, or merged from Node 2 + Node 3 when it is down |
 | Insert / update / delete | same order as "read one film", then `replicate()` to the other node holding the row |
 
 ## Pages
@@ -42,7 +43,7 @@ Cost: the split carries no business meaning. A range split such as
 | Edit film | `GET /films/:id/edit`, `POST /films/:id` | done | M2 |
 | Delete film | `POST /films/:id/delete` | done | M2 |
 | Node status (up/down, row counts, fragment check) | `GET /nodes`, `GET /nodes/status.json` | done | M2 |
-| Reports: cross-node aggregates (films per fragment, stock by rate tier, …) | `/reports` | Checkpoint 2 | M2 |
+| Reports: fragment check, breakdowns by rental rate and rental duration | `GET /reports`, `GET /reports/data.json` | done | M2 |
 | Concurrency demo: Cases 1–3 side by side, isolation level picker, timeline | `/concurrency` | Checkpoint 3 | M2 |
 | Crash controls: take a node offline / bring it back | `/nodes` (buttons) | Checkpoint 3 | M3 |
 | Recovery: pending log entries per node, replay | `/recovery` | Checkpoint 3 | M4 |

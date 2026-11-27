@@ -25,6 +25,7 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => res.redirect('/films'));
 app.use('/films', require('./routes/films'));
+app.use('/reports', require('./routes/reports'));
 app.use('/nodes', require('./routes/nodes'));
 
 app.use((req, res) => {
@@ -36,6 +37,9 @@ app.use((err, req, res, _next) => {
   if (err instanceof NotFoundError) status = 404;
   else if (err instanceof AllNodesDownError) status = 503;
   if (status === 500) console.error(err);
+  if (req.path.endsWith('.json')) {
+    return res.status(status).json({ error: err.message, tried: err.tried });
+  }
   res.status(status).render('error', {
     title: status === 404 ? 'Not found' : status === 503 ? 'Database unavailable' : 'Something went wrong',
     message: err.message,

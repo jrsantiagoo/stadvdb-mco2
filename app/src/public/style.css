@@ -22,6 +22,8 @@
 body { margin: 0; line-height: 1.5; }
 a { color: var(--accent); }
 h1 { font-size: 1.5rem; margin: 0 0 0.75rem; }
+h2 { font-size: 1.1rem; margin: 2rem 0 0.75rem; }
+.small { font-size: 0.85rem; }
 code { font-size: 0.875em; }
 
 .topbar {
@@ -93,6 +95,7 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .grid th { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
 .grid .num { text-align: right; font-variant-numeric: tabular-nums; }
 .frag { font-size: 0.8rem; color: var(--muted); }
+.grid tr.total td { font-weight: 600; border-top: 2px solid var(--line); }
 
 .pager { display: flex; gap: 1rem; align-items: center; justify-content: center; margin-top: 1rem; }
 .empty { text-align: center; padding: 2rem; background: var(--surface); border: 1px dashed var(--line); }
