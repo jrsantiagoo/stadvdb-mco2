@@ -17,6 +17,13 @@ if (!ISOLATION_LEVELS.includes(isolationLevel)) {
   throw new Error(`ISOLATION_LEVEL must be one of: ${ISOLATION_LEVELS.join(', ')}`);
 }
 
+// Seconds a statement waits for a row lock before failing (MySQL default: 50).
+// Kept short so a blocked demo or test fails visibly instead of hanging.
+const lockWaitTimeout = Number(process.env.LOCK_WAIT_TIMEOUT || 10);
+if (!Number.isInteger(lockWaitTimeout) || lockWaitTimeout < 1 || lockWaitTimeout > 120) {
+  throw new Error('LOCK_WAIT_TIMEOUT must be a whole number of seconds from 1 to 120');
+}
+
 function nodeConfig(id) {
   const p = (key, fallback) => process.env[`NODE${id}_${key}`] ?? fallback;
   return {
@@ -33,5 +40,6 @@ module.exports = {
   port: Number(process.env.PORT || 3000),
   isolationLevel,
   ISOLATION_LEVELS,
+  lockWaitTimeout,
   nodes: { 1: nodeConfig(1), 2: nodeConfig(2), 3: nodeConfig(3) },
 };

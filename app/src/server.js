@@ -9,6 +9,7 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Available to every view: which node rendered the page, plus any notice
@@ -26,6 +27,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => res.redirect('/films'));
 app.use('/films', require('./routes/films'));
 app.use('/reports', require('./routes/reports'));
+app.use('/concurrency', require('./routes/concurrency'));
 app.use('/nodes', require('./routes/nodes'));
 
 app.use((req, res) => {

@@ -1,0 +1,193 @@
+<%- include('partials/header') %>
+<%
+  const txCount = form.transactions.length;
+  const opLabel = { read: 'Read', update: 'Update stock', delete: 'Delete' };
+  const kindLabel = {
+    'dirty-read': 'Dirty read', 'non-repeatable-read': 'Non-repeatable read', 'lost-update': 'Lost update',
+    diverged: 'Replicas disagree', failed: 'Transaction failed', 'replication-failed': 'Replication failed',
+    unexpected: 'Unexpected final value', 'replica-down': 'Node down', blocked: 'Lock wait',
+  };
+  const stock = (r) => !r.up ? `Down (${r.error})` : r.row ? r.row.stock : 'No row';
+  const filmLink = form.filmId || 1;
+%>
+
+<h1>Concurrency</h1>
+<p class="muted">
+  Run transactions on the same film from different nodes at the same time, then check what each one saw and whether the nodes still agree.
+</p>
+
+<nav class="presets" aria-label="Presets">
+  <span class="muted">Load preset:</span>
+  <a class="btn" href="/concurrency?case=1&film=<%= filmLink %>">Case 1 · reads</a>
+  <a class="btn" href="/concurrency?case=2&film=<%= filmLink %>">Case 2 · write + reads</a>
+  <a class="btn" href="/concurrency?case=3&film=<%= filmLink %>">Case 3 · writes</a>
+</nav>
+
+<% if (errors.length) { %>
+  <div class="notice warn" role="alert">
+    <% for (const e of errors) { %><div><%= e %></div><% } %>
+  </div>
+<% } %>
+
+<form class="scenario" method="post" action="/concurrency/run">
+  <div class="settings">
+    <div class="field">
+      <label for="filmId">Film ID</label>
+      <input id="filmId" name="filmId" inputmode="numeric" value="<%= form.filmId ?? '' %>">
+      <small>Stored on Node 1 and Node <%= Number(form.filmId) % 2 === 1 ? 2 : 3 %>.</small>
+    </div>
+    <div class="field">
+      <label for="isolationLevel">Isolation level</label>
+      <select id="isolationLevel" name="isolationLevel">
+        <% for (const l of levels) { %>
+          <option value="<%= l %>" <%= form.isolationLevel === l ? 'selected' : '' %>><%= l %></option>
+        <% } %>
+        <option value="ALL" <%= form.isolationLevel === 'ALL' ? 'selected' : '' %>>Compare all four</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="holdMs">Hold time (ms)</label>
+      <input id="holdMs" name="holdMs" type="number" min="0" max="10000" step="100" value="<%= form.holdMs ?? 1500 %>">
+      <small>Pause inside each transaction before its last step.</small>
+    </div>
+    <div class="field">
+      <label for="writeMode">Updates</label>
+      <select id="writeMode" name="writeMode">
+        <option value="atomic" <%= form.writeMode === 'atomic' ? 'selected' : '' %>>Atomic: stock = stock + n</option>
+        <option value="read-modify-write" <%= form.writeMode === 'read-modify-write' ? 'selected' : '' %>>Read, then write the new value</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="baselineStock">Starting stock</label>
+      <input id="baselineStock" name="baselineStock" type="number" min="0" value="<%= form.baselineStock ?? 10 %>">
+      <label class="check"><input type="checkbox" name="reset" <%= form.reset === false || form.reset === undefined ? '' : 'checked' %>> Reset film to this stock on every node first</label>
+    </div>
+  </div>
+
+  <table class="grid txs">
+    <thead>
+      <tr><th>Tx</th><th>Starts at</th><th>Operation</th><th class="num">Stock change</th><th class="num">Start delay (ms)</th><th>Ends with</th></tr>
+    </thead>
+    <tbody>
+      <% form.transactions.forEach((t, i) => { const n = i + 1; %>
+        <tr>
+          <td>T<%= n %></td>
+          <td>
+            <select name="t<%= n %>_origin" aria-label="T<%= n %> node">
+              <% for (const node of [1, 2, 3]) { %><option value="<%= node %>" <%= Number(t.origin) === node ? 'selected' : '' %>>Node <%= node %></option><% } %>
+            </select>
+          </td>
+          <td>
+            <select name="t<%= n %>_op" aria-label="T<%= n %> operation">
+              <option value="none" <%= t.op === 'none' ? 'selected' : '' %>>Not used</option>
+              <% for (const op of ['read', 'update', 'delete']) { %><option value="<%= op %>" <%= t.op === op ? 'selected' : '' %>><%= opLabel[op] %></option><% } %>
+            </select>
+          </td>
+          <td class="num"><input class="narrow" name="t<%= n %>_delta" type="number" value="<%= t.delta ?? 0 %>" aria-label="T<%= n %> stock change"></td>
+          <td class="num"><input class="narrow" name="t<%= n %>_start" type="number" min="0" max="10000" step="50" value="<%= t.startMs ?? 0 %>" aria-label="T<%= n %> start delay"></td>
+          <td>
+            <select name="t<%= n %>_end" aria-label="T<%= n %> ends with">
+              <option value="commit" <%= t.end !== 'rollback' ? 'selected' : '' %>>Commit</option>
+              <option value="rollback" <%= t.end === 'rollback' ? 'selected' : '' %>>Rollback</option>
+            </select>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <p class="muted small">A transaction runs on its own node if that node holds the film, otherwise on Node 1. Stock change and rollback only apply to updates and deletes.</p>
+
+  <button class="btn primary" type="submit">Run scenario</button>
+</form>
+
+<% if (result) { %>
+  <h2 id="results">Results</h2>
+  <p class="muted small">Ran at <%= new Date(result.ranAt).toLocaleString() %> from Node <%= result.servedBy %>.</p>
+
+  <% if (result.runs.length > 1) { %>
+    <table class="grid">
+      <thead><tr><th>Isolation level</th><th>Outcome</th><th>Issues found</th><th class="num">Time</th></tr></thead>
+      <tbody>
+        <% for (const run of result.runs) { const issues = run.findings.filter((f) => f.level !== 'ok'); %>
+          <tr>
+            <td><a href="#run-<%= run.isolationLevel.replace(/ /g, '-') %>"><%= run.isolationLevel %></a></td>
+            <td><span class="status <%= run.consistent ? 'up' : 'down' %>"><%= run.consistent ? 'Consistent' : 'Inconsistent' %></span></td>
+            <td><%= issues.length ? [...new Set(issues.map((f) => kindLabel[f.kind] || f.kind))].join(', ') : 'None' %></td>
+            <td class="num"><%= run.durationMs %> ms</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <% for (const run of result.runs) { %>
+    <details class="run" id="run-<%= run.isolationLevel.replace(/ /g, '-') %>" <%= result.runs.length === 1 ? 'open' : '' %>>
+      <summary>
+        <strong><%= run.isolationLevel %></strong>
+        <span class="status <%= run.consistent ? 'up' : 'down' %>"><%= run.consistent ? 'Consistent' : 'Inconsistent' %></span>
+        <span class="muted">· <%= run.durationMs %> ms</span>
+      </summary>
+
+      <ul class="findings">
+        <% for (const f of run.findings) { %>
+          <li class="<%= f.level %>"><%= f.text %></li>
+        <% } %>
+      </ul>
+
+      <h3>Transactions</h3>
+      <table class="grid">
+        <thead><tr><th>Tx</th><th>Started at</th><th>Ran on</th><th>Operation</th><th>Values read</th><th>Result</th></tr></thead>
+        <tbody>
+          <% for (const t of run.transactions) { %>
+            <tr>
+              <td>T<%= t.tx %></td>
+              <td>Node <%= t.origin %></td>
+              <td><%= t.dbNode ? `Node ${t.dbNode}` : '—' %></td>
+              <td><%= opLabel[t.op] %><%= t.op === 'update' ? ` (${t.delta >= 0 ? '+' : ''}${t.delta})` : '' %></td>
+              <td><%= t.reads.map((r) => r.value ?? 'no row').join(' → ') || '—' %></td>
+              <td><span class="txstatus <%= t.status.replace(/ /g, '-') %>"><%= t.status %></span><%= t.error ? ` (${t.error})` : '' %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+
+      <h3>Schedule</h3>
+      <div class="scroll">
+        <table class="grid schedule">
+          <thead>
+            <tr><th class="num">Time (ms)</th><% for (let i = 1; i <= run.transactions.length; i++) { %><th>T<%= i %></th><% } %></tr>
+          </thead>
+          <tbody>
+            <% for (const row of run.schedule) { %>
+              <tr>
+                <td class="num"><%= row.t %></td>
+                <% for (const c of row.cells.slice(0, run.transactions.length)) { %>
+                  <td><% if (c) { %><span class="ev <%= c.kind %>"><%= c.text %></span><% } %></td>
+                <% } %>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Film on each node</h3>
+      <table class="grid">
+        <thead><tr><th>Node</th><th class="num">Stock before</th><th class="num">Stock after</th></tr></thead>
+        <tbody>
+          <% run.before.forEach((b, i) => { const a = run.after[i]; %>
+            <tr>
+              <td>Node <%= b.nodeId %></td>
+              <td class="num"><%= stock(b) %></td>
+              <td class="num"><%= stock(a) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% if (run.expected !== undefined) { %>
+        <p class="muted small">Expected after the committed writes: <%= run.expected === null ? 'film deleted' : `stock = ${run.expected}` %>.</p>
+      <% } %>
+    </details>
+  <% } %>
+<% } %>
+
+<%- include('partials/footer') %>

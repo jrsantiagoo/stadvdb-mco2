@@ -115,6 +115,34 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .status.up { color: var(--ok-text); font-weight: 600; }
 .status.down { color: var(--danger); font-weight: 600; }
 
+/* Concurrency page */
+h3 { font-size: 0.95rem; margin: 1.25rem 0 0.5rem; }
+select { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.presets { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+.scenario { display: grid; gap: 1rem; margin-bottom: 1rem; }
+.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; align-items: start; }
+.check { display: flex; gap: 0.4rem; align-items: center; font-weight: 400 !important; font-size: 0.85rem !important; }
+.check input { width: auto; }
+.txs select, .txs input { width: auto; }
+.narrow { width: 6rem !important; text-align: right; }
+.scroll { overflow-x: auto; }
+.run { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 0.75rem 1rem; margin-top: 1rem; }
+.run summary { cursor: pointer; display: flex; gap: 0.75rem; align-items: center; }
+.findings { padding-left: 1.25rem; }
+.findings li.ok { color: var(--ok-text); }
+.findings li.warn { color: var(--warn-text); font-weight: 600; }
+.findings li.info { color: var(--muted); }
+.schedule td { vertical-align: top; font-size: 0.85rem; }
+.schedule td:not(.num) { min-width: 12rem; }
+.ev { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 4px; background: var(--bg); }
+.ev.write { background: #e8eefc; color: #1f3f99; }
+.ev.commit { background: var(--ok-bg); color: var(--ok-text); font-weight: 600; }
+.ev.rollback, .ev.error { background: var(--warn-bg); color: var(--warn-text); font-weight: 600; }
+.ev.replicate { color: var(--n2); }
+.ev.begin, .ev.info { color: var(--muted); }
+.txstatus.committed { color: var(--ok-text); font-weight: 600; }
+.txstatus.failed, .txstatus.rolled-back { color: var(--warn-text); font-weight: 600; }
+
 @media (max-width: 640px) {
   .filmform .row { grid-template-columns: 1fr; }
   .topbar { flex-wrap: wrap; gap: 0.75rem; }

@@ -12,6 +12,10 @@ function getPool(nodeId) {
       connectTimeout: 2000, // fail fast when a node is down
       decimalNumbers: true,
     });
+    // Applies to every connection the pool opens, replication included.
+    pools[nodeId].pool.on('connection', (conn) => {
+      conn.query(`SET SESSION innodb_lock_wait_timeout = ${config.lockWaitTimeout}`);
+    });
   }
   return pools[nodeId];
 }

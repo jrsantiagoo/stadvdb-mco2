@@ -13,7 +13,8 @@
       <a href="/films" class="<%= currentPath.startsWith('/films') && currentPath !== '/films/new' ? 'active' : '' %>">Films</a>
       <a href="/films/new" class="<%= currentPath === '/films/new' ? 'active' : '' %>">Add film</a>
       <a href="/reports" class="<%= currentPath.startsWith('/reports') ? 'active' : '' %>">Reports</a>
-      <a href="/nodes"class="<%= currentPath.startsWith('/nodes') ? 'active' : '' %>">Nodes</a>
+      <a href="/concurrency" class="<%= currentPath.startsWith('/concurrency') ? 'active' : '' %>">Concurrency</a>
+      <a href="/nodes" class="<%= currentPath.startsWith('/nodes') ? 'active' : '' %>">Nodes</a>
     </nav>
     <span class="node-badge node-<%= localNode %>" title="The node whose app rendered this page">Node <%= localNode %></span>
   </header>
