@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · Node <%= localNode %> · Film DDB</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/films">Film DDB</a>
+    <nav>
+      <a href="/films" class="<%= currentPath.startsWith('/films') && currentPath !== '/films/new' ? 'active' : '' %>">Films</a>
+      <a href="/films/new" class="<%= currentPath === '/films/new' ? 'active' : '' %>">Add film</a>
+      <a href="/nodes" class="<%= currentPath.startsWith('/nodes') ? 'active' : '' %>">Nodes</a>
+    </nav>
+    <span class="node-badge node-<%= localNode %>" title="The node whose app rendered this page">Node <%= localNode %></span>
+  </header>
+  <main>
+    <% if (notice) { %>
+      <p class="notice <%= noticeLevel %>" role="status"><%= notice %></p>
+    <% } %>
+    <% for (const w of warnings) { %>
+      <p class="notice warn" role="status"><%= w %></p>
+    <% } %>

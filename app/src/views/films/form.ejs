@@ -1,0 +1,48 @@
+<%- include('../partials/header') %>
+<% const editing = mode === 'edit'; %>
+<% const field = (name) => film[name] ?? ''; %>
+
+<p><a href="<%= editing ? `/films/${film.film_id}` : '/films' %>">← Back</a></p>
+<h1><%= editing ? `Edit film ${film.film_id}` : 'Add film' %></h1>
+
+<% if (Object.keys(errors).length) { %>
+  <p class="notice warn" role="alert">Fix the fields marked below.</p>
+<% } %>
+
+<form class="filmform" method="post" action="<%= editing ? `/films/${film.film_id}` : '/films' %>" novalidate>
+  <% if (!editing) { %>
+    <div class="field <%= errors.film_id ? 'invalid' : '' %>">
+      <label for="film_id">Film ID</label>
+      <input id="film_id" name="film_id" inputmode="numeric" value="<%= field('film_id') %>" aria-describedby="film_id_hint">
+      <small id="film_id_hint"><%= errors.film_id || 'Leave blank to use the next free ID. Odd IDs go to Node 2, even IDs to Node 3.' %></small>
+    </div>
+  <% } %>
+
+  <div class="field <%= errors.title ? 'invalid' : '' %>">
+    <label for="title">Title</label>
+    <input id="title" name="title" maxlength="255" required value="<%= field('title') %>">
+    <% if (errors.title) { %><small><%= errors.title %></small><% } %>
+  </div>
+
+  <div class="row">
+    <div class="field <%= errors.stock ? 'invalid' : '' %>">
+      <label for="stock">Stock</label>
+      <input id="stock" name="stock" type="number" min="0" step="1" required value="<%= field('stock') %>">
+      <% if (errors.stock) { %><small><%= errors.stock %></small><% } %>
+    </div>
+    <div class="field <%= errors.rental_rate ? 'invalid' : '' %>">
+      <label for="rental_rate">Rental rate</label>
+      <input id="rental_rate" name="rental_rate" type="number" min="0" max="99.99" step="0.01" required value="<%= field('rental_rate') %>">
+      <% if (errors.rental_rate) { %><small><%= errors.rental_rate %></small><% } %>
+    </div>
+    <div class="field <%= errors.rental_duration ? 'invalid' : '' %>">
+      <label for="rental_duration">Rental duration (days)</label>
+      <input id="rental_duration" name="rental_duration" type="number" min="1" max="127" step="1" required value="<%= field('rental_duration') %>">
+      <% if (errors.rental_duration) { %><small><%= errors.rental_duration %></small><% } %>
+    </div>
+  </div>
+
+  <button class="btn primary" type="submit"><%= editing ? 'Save changes' : 'Add film' %></button>
+</form>
+
+<%- include('../partials/footer') %>

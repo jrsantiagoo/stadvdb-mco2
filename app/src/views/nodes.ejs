@@ -1,0 +1,32 @@
+<%- include('partials/header') %>
+
+<h1>Nodes</h1>
+<p class="muted">Isolation level: <strong><%= isolationLevel %></strong></p>
+
+<table class="grid">
+  <thead>
+    <tr><th>Node</th><th>Role</th><th>Address</th><th>Status</th><th class="num">Rows</th><th class="num">Ping</th></tr>
+  </thead>
+  <tbody>
+    <% for (const n of nodes) { %>
+      <tr>
+        <td>Node <%= n.nodeId %><%= n.nodeId === localNode ? ' (this node)' : '' %></td>
+        <td><%= n.role %></td>
+        <td><code><%= n.host %></code></td>
+        <td><span class="status <%= n.up ? 'up' : 'down' %>"><%= n.up ? 'Up' : `Down: ${n.error}` %></span></td>
+        <td class="num"><%= n.up ? n.rows.toLocaleString() : '—' %></td>
+        <td class="num"><%= n.ms %> ms</td>
+      </tr>
+    <% } %>
+  </tbody>
+</table>
+
+<% if (fragmentsAddUp === true) { %>
+  <p class="notice ok">Node 2 + Node 3 row counts equal Node 1's row count.</p>
+<% } else if (fragmentsAddUp === false) { %>
+  <p class="notice warn">Node 2 + Node 3 row counts do not equal Node 1's row count. Some changes have not been replicated yet.</p>
+<% } else { %>
+  <p class="muted">Not every node is up, so the fragment counts can't be compared.</p>
+<% } %>
+
+<%- include('partials/footer') %>

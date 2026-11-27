@@ -1,0 +1,9 @@
+  </main>
+  <footer class="pagefoot">
+    Page rendered by Node <%= localNode %>
+    <% if (servedBy && servedBy.length) { %>
+      · data read from Node <%= servedBy.join(' + ') %>
+    <% } %>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<%- include('../partials/header') %>
+<% const pages = Math.max(1, Math.ceil(total / pageSize)); %>
+<% const link = (p) => '/films?' + new URLSearchParams({ ...(q ? { q } : {}), page: p }); %>
+
+<div class="pagehead">
+  <h1>Films</h1>
+  <a class="btn primary" href="/films/new">Add film</a>
+</div>
+
+<form class="search" method="get" action="/films" role="search">
+  <label for="q" class="sr-only">Search films</label>
+  <input id="q" name="q" type="search" value="<%= q %>" placeholder="Search by title or film ID">
+  <button class="btn" type="submit">Search</button>
+  <% if (q) { %><a href="/films">Clear</a><% } %>
+</form>
+
+<p class="muted">
+  <%= total.toLocaleString() %> <%= total === 1 ? 'film' : 'films' %><%= q ? ` matching “${q}”` : '' %>
+  <% if (total > 0) { %>· page <%= page %> of <%= pages %><% } %>
+</p>
+
+<% if (films.length === 0) { %>
+  <div class="empty">
+    <p><%= q ? 'No films match that search.' : 'No films yet.' %></p>
+    <a class="btn primary" href="/films/new">Add film</a>
+  </div>
+<% } else { %>
+  <table class="grid">
+    <thead>
+      <tr>
+        <th class="num">ID</th>
+        <th>Title</th>
+        <th class="num">Stock</th>
+        <th class="num">Rate</th>
+        <th class="num">Days</th>
+        <th>Fragment</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const f of films) { %>
+        <tr>
+          <td class="num"><%= f.film_id %></td>
+          <td><a href="/films/<%= f.film_id %>"><%= f.title %></a></td>
+          <td class="num"><%= f.stock %></td>
+          <td class="num"><%= Number(f.rental_rate).toFixed(2) %></td>
+          <td class="num"><%= f.rental_duration %></td>
+          <td><span class="frag">Node <%= f.film_id % 2 === 1 ? 2 : 3 %></span></td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+
+  <% if (pages > 1) { %>
+    <nav class="pager" aria-label="Pages">
+      <% if (page > 1) { %><a class="btn" href="<%= link(page - 1) %>">Previous</a><% } %>
+      <span class="muted">Page <%= page %> of <%= pages %></span>
+      <% if (page < pages) { %><a class="btn" href="<%= link(page + 1) %>">Next</a><% } %>
+    </nav>
+  <% } %>
+<% } %>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,21 @@
+{
+  "name": "stadvdb-mco2-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Web app for the STADVDB MCO2 three-node distributed film database",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.1",
+    "mysql2": "^3.11.4"
+  }
+}

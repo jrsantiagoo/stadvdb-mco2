@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+
+<p><a href="/films">← All films</a></p>
+
+<div class="pagehead">
+  <h1><%= film.title %></h1>
+  <a class="btn" href="/films/<%= film.film_id %>/edit">Edit</a>
+</div>
+
+<% if (skipped && skipped.length) { %>
+  <p class="notice warn">
+    <% for (const s of skipped) { %>Node <%= s.nodeId %> was unreachable (<%= s.error %>). <% } %>
+    Read from Node <%= servedBy[0] %> instead.
+  </p>
+<% } %>
+
+<dl class="facts">
+  <dt>Film ID</dt><dd><%= film.film_id %></dd>
+  <dt>Stock</dt><dd><%= film.stock %></dd>
+  <dt>Rental rate</dt><dd><%= Number(film.rental_rate).toFixed(2) %></dd>
+  <dt>Rental duration</dt><dd><%= film.rental_duration %> days</dd>
+  <dt>Stored on</dt><dd>Node 1 (central) and Node <%= film.film_id % 2 === 1 ? 2 : 3 %> (fragment)</dd>
+</dl>
+
+<form method="post" action="/films/<%= film.film_id %>/delete"
+      onsubmit="return confirm('Delete film <%= film.film_id %> from every node?');">
+  <button class="btn danger" type="submit">Delete film</button>
+</form>
+
+<%- include('../partials/footer') %>
