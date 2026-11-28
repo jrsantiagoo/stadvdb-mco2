@@ -1,32 +1,90 @@
 <%- include('partials/header') %>
 
-<h1>Nodes</h1>
-<p class="muted">Isolation level: <strong><%= isolationLevel %></strong></p>
+<h1>Cluster Nodes &amp; Crash Controls</h1>
+<p>Served by <strong>Node <%= localNode %></strong> &middot; Default Isolation: <code><%= isolationLevel %></code></p>
 
-<table class="grid">
+<% if (fragmentsAddUp !== null) { %>
+  <p class="<%= fragmentsAddUp ? 'notice ok' : 'notice warn' %>">
+    Fragment Consistency Check:
+    <%= fragmentsAddUp ? 'PASS — Node 2 + Node 3 rows equal Node 1.' : 'MISMATCH — Fragment counts do not match Node 1!' %>
+  </p>
+<% } %>
+
+<table>
   <thead>
-    <tr><th>Node</th><th>Role</th><th>Address</th><th>Status</th><th class="num">Rows</th><th class="num">Ping</th></tr>
+    <tr>
+      <th>Node</th>
+      <th>Role</th>
+      <th>Host</th>
+      <th>Status</th>
+      <th>Film Rows</th>
+      <th>Latency</th>
+      <th>Crash Control</th>
+    </tr>
   </thead>
   <tbody>
-    <% for (const n of nodes) { %>
+    <% nodes.forEach((n) => { %>
       <tr>
-        <td>Node <%= n.nodeId %><%= n.nodeId === localNode ? ' (this node)' : '' %></td>
+        <td><strong>Node <%= n.nodeId %></strong></td>
         <td><%= n.role %></td>
         <td><code><%= n.host %></code></td>
-        <td><span class="status <%= n.up ? 'up' : 'down' %>"><%= n.up ? 'Up' : `Down: ${n.error}` %></span></td>
-        <td class="num"><%= n.up ? n.rows.toLocaleString() : '—' %></td>
-        <td class="num"><%= n.ms %> ms</td>
+        <td>
+          <% if (n.up) { %>
+            <span style="color: green; font-weight: bold;">ONLINE</span>
+          <% } else { %>
+            <span style="color: red; font-weight: bold;">OFFLINE</span>
+            <small>(<%= n.error %>)</small>
+          <% } %>
+        </td>
+        <td><%= n.up ? n.rows : '—' %></td>
+        <td><%= n.up ? `${n.ms} ms` : '—' %></td>
+        <td>
+          <form method="POST" action="/nodes/<%= n.nodeId %>/toggle" style="display:inline;">
+            <input type="hidden" name="online" value="<%= n.up ? 'false' : 'true' %>">
+            <button type="submit">
+              <%= n.up ? 'Simulate Crash (Turn OFF)' : 'Recover Node (Turn ON)' %>
+            </button>
+          </form>
+        </td>
       </tr>
-    <% } %>
+    <% }) %>
   </tbody>
 </table>
 
-<% if (fragmentsAddUp === true) { %>
-  <p class="notice ok">Node 2 + Node 3 row counts equal Node 1's row count.</p>
-<% } else if (fragmentsAddUp === false) { %>
-  <p class="notice warn">Node 2 + Node 3 row counts do not equal Node 1's row count. Some changes have not been replicated yet.</p>
+<h2>Pending Replication Outbox (<%= pendingLogs.length %>)</h2>
+<form method="POST" action="/nodes/recover" style="margin-bottom: 1rem;">
+  <button type="submit">Run Manual Recovery Replay</button>
+</form>
+
+<% if (!pendingLogs.length) { %>
+  <p>No pending replication logs. All reachable nodes are synchronized.</p>
 <% } else { %>
-  <p class="muted">Not every node is up, so the fragment counts can't be compared.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Stored On</th>
+        <th>Log ID</th>
+        <th>Origin &rarr; Target</th>
+        <th>Op</th>
+        <th>Film ID</th>
+        <th>Status</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% pendingLogs.forEach((log) => { %>
+        <tr>
+          <td>Node <%= log.stored_on %></td>
+          <td><%= log.log_id %></td>
+          <td>Node <%= log.origin_node %> &rarr; Node <%= log.target_node %></td>
+          <td><code><%= log.op %></code></td>
+          <td><%= log.film_id %></td>
+          <td><strong><%= log.status %></strong></td>
+          <td><%= log.error_msg || '' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
 <% } %>
 
 <%- include('partials/footer') %>
