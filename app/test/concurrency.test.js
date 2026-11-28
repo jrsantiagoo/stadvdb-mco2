@@ -78,6 +78,16 @@ test('flags a lost update when two committed updates do not both land', () => {
   assert.strictEqual(result.consistent, false);
 });
 
+test('a read that waited for a lock counts as blocked', () => {
+  const result = analyse({
+    transactions: [writer(1, 1, { writtenValue: 15 }), { ...reader(2, 1, [[1500, 15], [3000, 15]]), readWaitMs: 1200 }],
+    before: [replica(1, 10), replica(2, 10)],
+    after: [replica(1, 15), replica(2, 15)],
+    baseline: 10,
+  });
+  assert.match(result.findings.find((f) => f.kind === 'blocked').text, /T2 waited 1200 ms .* before reading/);
+});
+
 test('a failed transaction is reported with its reason', () => {
   const result = analyse({
     transactions: [writer(1, 1, { status: 'failed', error: 'ER_LOCK_DEADLOCK' })],

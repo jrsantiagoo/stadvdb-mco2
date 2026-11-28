@@ -16,7 +16,7 @@
 //   npm run test:concurrency -- --apps http://10.20.200.175:3000,http://10.20.200.176:3000,http://10.20.200.177:3000
 //
 // Options:
-//   --apps    app URLs; runs rotate across them   (default http://localhost:3000)
+//   --apps    app URLs; runs rotate across them   (default http://localhost:<PORT from app/.env>)
 //   --cases   which cases to run                  (default 1,2,3)
 //   --levels  isolation levels, or ALL            (default ALL)
 //   --runs    repetitions per case and level      (default 3)
@@ -35,9 +35,16 @@ const CASE_NAMES = {
 };
 const REQUEST_TIMEOUT_MS = 120000;
 
+// The local app's port, read from app/.env like the app itself does.
+function localAppUrl() {
+  const env = {};
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env'), processEnv: env, quiet: true });
+  return `http://localhost:${process.env.PORT || env.PORT || 3000}`;
+}
+
 function parseArgs(argv) {
   const opts = {
-    apps: ['http://localhost:3000'],
+    apps: [localAppUrl()],
     cases: [1, 2, 3],
     levels: LEVELS,
     runs: 3,

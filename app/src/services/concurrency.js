@@ -189,12 +189,17 @@ async function runTransaction(n, tx, ctx) {
     await conn.beginTransaction();
     log(n, 'begin', `BEGIN on Node ${result.dbNode}`);
 
+    // Under SERIALIZABLE, InnoDB turns plain reads into locking reads, so a
+    // read can wait for another transaction's lock: time it like a write.
     const read = async (label, own = false) => {
+      const started = now();
       const [rows] = await conn.query('SELECT film_id, title, stock, rental_rate, rental_duration FROM film WHERE film_id = ?', [filmId]);
       const row = rows[0] || null;
       const t = now();
+      const waited = t - started;
+      if (waited > BLOCKED_MS) result.readWaitMs = Math.max(result.readWaitMs || 0, waited);
       if (!own) result.reads.push({ t, value: row ? row.stock : null });
-      log(n, 'read', `${label}: ${row ? `stock = ${row.stock}` : 'no row'}`);
+      log(n, 'read', `${label}: ${row ? `stock = ${row.stock}` : 'no row'}${waited > BLOCKED_MS ? ` (waited ${waited} ms for a lock)` : ''}`);
       return row;
     };
 
@@ -298,7 +303,8 @@ function analyse({ transactions, before, after, baseline }) {
   }
 
   for (const t of transactions) {
-    if (t.waitedMs > BLOCKED_MS) add('blocked', 'info', `T${t.tx} waited ${t.waitedMs} ms for a row lock on Node ${t.dbNode}.`);
+    if (t.waitedMs > BLOCKED_MS) add('blocked', 'info', `T${t.tx} waited ${t.waitedMs} ms for a row lock on Node ${t.dbNode} before writing.`);
+    if (t.readWaitMs > BLOCKED_MS) add('blocked', 'info', `T${t.tx} waited ${t.readWaitMs} ms for a row lock on Node ${t.dbNode} before reading.`);
     if (t.status === 'failed' && t.error === 'ALL_NODES_DOWN') {
       add('failed', 'warn', `T${t.tx} could not start: no node holding the film is reachable.`);
     } else if (t.status === 'failed') {
