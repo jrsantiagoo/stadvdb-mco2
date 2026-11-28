@@ -18,7 +18,8 @@ function formToBody(form) {
       end: form[`t${i}_end`],
     });
   }
-  return { ...form, transactions };
+  // An unticked checkbox sends nothing, so say "off" explicitly.
+  return { ...form, restore: form.restore === 'on', transactions };
 }
 
 // What the form shows: always FORM_ROWS rows, unused ones set to "none".

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { preset, parseSpec, analyse, scheduleRows, ScenarioError } = require('../src/services/concurrency');
+const { preset, parseSpec, analyse, scheduleRows, restorePlan, ScenarioError } = require('../src/services/concurrency');
 
 test('presets put transactions on the nodes that hold the film', () => {
   const odd = preset(2, 7); // film 7 lives on Node 1 and Node 2
@@ -96,6 +96,30 @@ test('a failed transaction is reported with its reason', () => {
     baseline: 10,
   });
   assert.match(result.findings.find((f) => f.kind === 'failed').text, /deadlock/);
+});
+
+test('restore puts each node back to its own original copy', () => {
+  const row = (stock) => ({ film_id: 7, title: 'X', stock, rental_rate: 0.99, rental_duration: 3 });
+  const plan = restorePlan([
+    { nodeId: 1, up: true, row: row(12) },
+    { nodeId: 2, up: true, row: row(9) },
+  ]);
+  assert.deepStrictEqual(plan.map((p) => [p.nodeId, p.action, p.row.stock]), [[1, 'restore', 12], [2, 'restore', 9]]);
+});
+
+test('restore removes a film that was not there before, and skips nodes that were down', () => {
+  const plan = restorePlan([
+    { nodeId: 1, up: true, row: null },
+    { nodeId: 3, up: false, error: 'ECONNREFUSED' },
+  ]);
+  assert.deepStrictEqual(plan.map((p) => [p.nodeId, p.action]), [[1, 'delete'], [3, 'skip']]);
+});
+
+test('restore is on unless turned off', () => {
+  assert.strictEqual(parseSpec(preset(1, 5)).restore, true);
+  const { restore, ...noRestore } = preset(1, 5);
+  assert.strictEqual(parseSpec(noRestore).restore, true);
+  assert.strictEqual(parseSpec({ ...preset(1, 5), restore: false }).restore, false);
 });
 
 test('schedule rows are in time order with one column per transaction', () => {

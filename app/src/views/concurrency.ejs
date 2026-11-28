@@ -61,6 +61,7 @@
       <label for="baselineStock">Starting stock</label>
       <input id="baselineStock" name="baselineStock" type="number" min="0" value="<%= form.baselineStock ?? 10 %>">
       <label class="check"><input type="checkbox" name="reset" <%= form.reset === false || form.reset === undefined ? '' : 'checked' %>> Reset film to this stock on every node first</label>
+      <label class="check"><input type="checkbox" name="restore" <%= form.restore === false ? '' : 'checked' %>> Put the film back as it was afterwards</label>
     </div>
   </div>
 
@@ -103,6 +104,15 @@
 <% if (result) { %>
   <h2 id="results">Results</h2>
   <p class="muted small">Ran at <%= new Date(result.ranAt).toLocaleString() %> from Node <%= result.servedBy %>.</p>
+  <% if (result.restored) { const failedRestore = result.restored.filter((r) => !r.ok); %>
+    <% if (failedRestore.length) { %>
+      <p class="notice warn">Could not put film <%= result.spec.filmId %> back on <%= failedRestore.map((r) => `Node ${r.nodeId} (${r.error})`).join(', ') %>. Its stock there may differ from before the test.</p>
+    <% } else { %>
+      <p class="notice ok">Film <%= result.spec.filmId %> was put back as it was before the test on <%= result.restored.map((r) => `Node ${r.nodeId}`).join(' and ') %>. The "after" stock below is what the scenario left before that.</p>
+    <% } %>
+  <% } else { %>
+    <p class="muted small">Restore was off: film <%= result.spec.filmId %> keeps the stock shown under "after".</p>
+  <% } %>
 
   <% if (result.runs.length > 1) { %>
     <table class="grid">

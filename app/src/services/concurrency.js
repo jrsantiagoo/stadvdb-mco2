@@ -38,7 +38,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // Builds Case 1–3 for a film. "f" is the fragment node holding the film.
 function preset(caseNo, filmId) {
   const f = fragmentNodeFor(filmId);
-  const base = { filmId, isolationLevel: config.isolationLevel, holdMs: 1500, writeMode: 'atomic', reset: true, baselineStock: 10 };
+  const base = { filmId, isolationLevel: config.isolationLevel, holdMs: 1500, writeMode: 'atomic', reset: true, restore: true, baselineStock: 10 };
   const tx = (origin, op, startMs, extra = {}) => ({ origin, op, startMs, delta: 0, end: 'commit', ...extra });
   switch (Number(caseNo)) {
     case 1:
@@ -92,6 +92,8 @@ function parseSpec(body) {
   if (!spec.writeMode) errors.push(`Write mode must be ${WRITE_MODES.join(' or ')}.`);
 
   spec.reset = body.reset === true || body.reset === 'on' || body.reset === 'true';
+  // Restore is on unless explicitly turned off.
+  spec.restore = body.restore === undefined || body.restore === true || body.restore === 'on' || body.restore === 'true';
   spec.baselineStock = intIn(body.baselineStock, 0, 1000000);
   if (spec.reset && spec.baselineStock == null) errors.push('Starting stock must be 0 to 1000000.');
 
@@ -380,14 +382,62 @@ async function runOnce(spec, isolationLevel) {
   };
 }
 
+// ---------- restore ----------
+
+// What to do on each node to put the film back as it was before the scenario.
+// Each node goes back to its own original copy, even if the copies differed.
+function restorePlan(original) {
+  return original.map((r) => {
+    if (!r.up) return { nodeId: r.nodeId, action: 'skip', reason: 'node was down when the scenario started' };
+    if (r.row) return { nodeId: r.nodeId, action: 'restore', row: r.row };
+    return { nodeId: r.nodeId, action: 'delete' };
+  });
+}
+
+async function restoreFilm(filmId, original) {
+  const results = [];
+  for (const step of restorePlan(original)) {
+    if (step.action === 'skip') {
+      results.push({ nodeId: step.nodeId, action: 'skip', ok: false, error: step.reason });
+      continue;
+    }
+    try {
+      if (step.action === 'restore') {
+        const r = step.row;
+        await getPool(step.nodeId).execute(
+          `INSERT INTO film (film_id, title, stock, rental_rate, rental_duration) VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE title = VALUES(title), stock = VALUES(stock),
+             rental_rate = VALUES(rental_rate), rental_duration = VALUES(rental_duration)`,
+          [filmId, r.title, r.stock, r.rental_rate, r.rental_duration],
+        );
+      } else {
+        await getPool(step.nodeId).execute('DELETE FROM film WHERE film_id = ?', [filmId]);
+      }
+      results.push({ nodeId: step.nodeId, action: step.action, ok: true, stock: step.row?.stock ?? null });
+    } catch (err) {
+      results.push({ nodeId: step.nodeId, action: step.action, ok: false, error: err.code || err.message });
+    }
+  }
+  return results;
+}
+
+// ---------- scenario ----------
+
 // Runs the scenario once, or once per isolation level when the level is ALL.
+// With restore on, the film is put back on every node afterwards, even if a run errors.
 async function runScenario(spec) {
   const levels = spec.isolationLevel === 'ALL' ? config.ISOLATION_LEVELS : [spec.isolationLevel];
   // Comparing levels only makes sense from the same starting point.
   const effective = levels.length > 1 ? { ...spec, reset: true, baselineStock: spec.baselineStock ?? 10 } : spec;
+  const original = effective.restore ? await readReplicas(effective.filmId) : null;
   const runs = [];
-  for (const level of levels) runs.push(await runOnce(effective, level));
-  return { spec: effective, runs, ranAt: new Date().toISOString(), servedBy: config.nodeId };
+  let restored = null;
+  try {
+    for (const level of levels) runs.push(await runOnce(effective, level));
+  } finally {
+    if (original) restored = await restoreFilm(effective.filmId, original);
+  }
+  return { spec: effective, runs, restored, ranAt: new Date().toISOString(), servedBy: config.nodeId };
 }
 
-module.exports = { preset, parseSpec, runScenario, analyse, scheduleRows, ScenarioError, OPS, WRITE_MODES };
+module.exports = { preset, parseSpec, runScenario, analyse, scheduleRows, restorePlan, ScenarioError, OPS, WRITE_MODES };

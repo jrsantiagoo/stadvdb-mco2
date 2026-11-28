@@ -7,7 +7,8 @@
 //   test-logs/concurrency-<time>.md     summary tables for the report appendix
 //
 // A run PASSES when the replicas agree at the end and the final stock matches
-// the committed writes. Anomalies (dirty reads, non-repeatable reads, lock
+// the committed writes. After each run the app puts the test film back as it
+// was, so the dataset is left unchanged. Anomalies (dirty reads, non-repeatable reads, lock
 // waits) are recorded separately: some are expected under weaker isolation.
 //
 // Usage (run on any node):
@@ -111,12 +112,16 @@ async function postJson(url, body) {
 function summarise(item, response) {
   const run = response.runs[0];
   const issues = run.findings.filter((f) => f.level !== 'ok');
+  // A failed restore doesn't fail the test, but the film's data may have changed.
+  const unrestored = (response.restored || []).filter((r) => !r.ok);
+  const restoreNotes = unrestored.map((r) => `Film ${item.filmId} was not restored on Node ${r.nodeId} (${r.error}).`);
   return {
     ...item,
     servedBy: response.servedBy,
     pass: run.consistent,
-    anomalies: [...new Set(issues.map((f) => f.kind))],
-    findings: run.findings.map((f) => f.text),
+    anomalies: [...new Set([...issues.map((f) => f.kind), ...(unrestored.length ? ['restore-failed'] : [])])],
+    findings: [...run.findings.map((f) => f.text), ...restoreNotes],
+    restored: response.restored ? unrestored.length === 0 : null,
     transactions: run.transactions.map((t) => ({
       tx: t.tx,
       origin: t.origin,
