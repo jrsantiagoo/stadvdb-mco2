@@ -44,6 +44,7 @@ Cost: the split carries no business meaning. A range split such as
 | Delete film | `POST /films/:id/delete` | done | M2 |
 | Node status (up/down, row counts, fragment check) | `GET /nodes`, `GET /nodes/status.json` | done | M2 |
 | Reports: fragment check, breakdowns by rental rate and rental duration | `GET /reports`, `GET /reports/data.json` | done | M2 |
+| Concurrency test script: every case × level × 3 runs, logs + Markdown summary | `npm run test:concurrency` | built, needs a real-DB run | M2 |
 | Concurrency demo: Case 1–3 presets, isolation level picker or "compare all four", schedule table, anomaly checks | `GET /concurrency`, `POST /concurrency/run`, `POST /concurrency/run.json` | built, needs a real-DB run | M2 |
 | Crash controls: take a node offline / bring it back | `/nodes` (buttons) | Checkpoint 3 | M3 |
 | Recovery: pending log entries per node, replay | `/recovery` | Checkpoint 3 | M4 |
